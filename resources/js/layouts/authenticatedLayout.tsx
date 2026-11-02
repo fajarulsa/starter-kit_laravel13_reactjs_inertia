@@ -1,5 +1,5 @@
 import { ReactNode, useEffect, useState } from 'react';
-import { Link, usePage } from '@inertiajs/react';
+import { Link, usePage, router } from '@inertiajs/react';
 import toast, { Toaster } from 'react-hot-toast';
 import { route } from 'ziggy-js';
 
@@ -9,6 +9,8 @@ interface User {
     email: string;
     roles?: string[];
     permissions?: string[];
+    unread_notifications_count?: number;
+    notifications?: any[];
 }
 
 interface PageProps {
@@ -84,9 +86,20 @@ function ActivityIcon() {
     );
 }
 
+function SettingsIcon() {
+    return (
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className="h-4 w-4">
+            <circle cx="12" cy="12" r="3" />
+            <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9.6 19a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82A1.65 1.65 0 0 0 3 12V9a2 2 0 1 1 4 0v.09A1.65 1.65 0 0 0 7.6 11a1.65 1.65 0 0 0 .51-1H9a2 2 0 1 1 4 0h-.09A1.65 1.65 0 0 0 13.4 11a1.65 1.65 0 0 0 .51-1V9a2 2 0 1 1-4-4h-.09A1.65 1.65 0 0 0 9.6-3a1.65A1.65A 0 0 0 9-1.51V3a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 3.6-1a1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 .6-3a1.65A1.65A0 0 0 .33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33A1.65 1.65 0 0 0 3-9V-12a2 2 0 1 1 4 0v.09A1.65 1.65 0 0 0 7.6-11a1.65A1.65A 0 0 0 .51-9H9a2 2 0 1 1-4-4h-.09A1.65A1.65A 0 0 0 9.6-3a1.65A1.65A 0 0 0 .51-1V3a2 2 0 1 1-4 0v-.09A1.65A1.65A 0 0 0 .6-3a1.65A1.65A 0 0 0 .33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65A1.65A 0 0 0 3-9V-12a2 2 0 1 1 4 0v.09A1.65A1.65A 0 0 0 7.6-11a1.65A1.65A 0 0 0 .51-9H9a2 2 0 1 1-4-4h-.09A1.65A1.65A" />
+        </svg>
+    );
+}
+
+
 export default function AuthenticatedLayout({ header, children }: AuthenticatedLayoutProps) {
     const { auth, flash } = usePage<PageProps>().props;
     const [isProfileOpen, setIsProfileOpen] = useState(false);
+    const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
 
     useEffect(() => {
         if (flash?.success) {
@@ -130,11 +143,18 @@ export default function AuthenticatedLayout({ header, children }: AuthenticatedL
             permission: 'roles.view',
         },
         {
-        label: 'System Health',
-        href: route('health.index'),
-        active: route().current('health.*'),
-        icon: <ActivityIcon />,
-        permission: 'health.view',
+            label: 'System Health',
+            href: route('health.index'),
+            active: route().current('health.*'),
+            icon: <ActivityIcon />,
+            permission: 'health.view',
+        },
+        {
+            label: 'Pengaturan',
+            href: route('settings.index'),
+            active: route().current('settings.*'),
+            icon: <SettingsIcon />,
+            permission: 'settings.view',
         },
     ];
 
@@ -145,6 +165,17 @@ export default function AuthenticatedLayout({ header, children }: AuthenticatedL
     const displayRole = auth.user?.roles && auth.user.roles.length > 0 
         ? auth.user.roles[0] 
         : 'User';
+
+    const notifications = auth.user?.notifications || [];
+    const unreadCount = auth.user?.unread_notifications_count || 0;
+
+    const handleMarkAllRead = () => {
+        router.post(route('notifications.mark-all-read'), {}, { preserveScroll: true });
+    };
+
+    const handleMarkAsRead = (id: string) => {
+        router.post(route('notifications.mark-read', id), {}, { preserveScroll: true });
+    };
 
     return (
         <div className="min-h-screen bg-[#f3f5f7] text-slate-800">
@@ -217,13 +248,47 @@ export default function AuthenticatedLayout({ header, children }: AuthenticatedL
                             </div>
 
                             <div className="flex items-center gap-4">
-                                <button
-                                    type="button"
-                                    className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-600 transition hover:bg-slate-50"
-                                    aria-label="Notifications"
-                                >
-                                    <BellIcon />
-                                </button>
+                                <div className="relative">
+                                    <button
+                                        onClick={() => {
+                                            setIsNotificationsOpen(!isNotificationsOpen);
+                                            setIsProfileOpen(false);
+                                        }}
+                                        className="relative inline-flex h-10 w-10 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-600 transition hover:bg-slate-50 focus:outline-none"
+                                    >
+                                        <BellIcon />
+                                        {unreadCount > 0 && (
+                                            <span className="absolute -top-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full bg-red-500 text-[10px] font-bold text-white ring-2 ring-white">
+                                                {unreadCount > 9 ? '9+' : unreadCount}
+                                            </span>
+                                        )}
+                                    </button>
+
+                                    {isNotificationsOpen && (
+                                        <div className="absolute right-0 top-full mt-2 w-80 origin-top-right rounded-2xl border border-slate-200 bg-white py-2 shadow-xl z-50">
+                                            <div className="flex items-center justify-between px-4 py-2 border-b border-slate-100">
+                                                <h4 className="text-sm font-bold text-slate-800">Notifikasi</h4>
+                                                {unreadCount > 0 && (
+                                                    <button onClick={handleMarkAllRead} className="text-[11px] font-semibold text-[#2a75d0] hover:underline">
+                                                        Tandai Semua Dibaca
+                                                    </button>
+                                                )}
+                                            </div>
+                                            <div className="max-h-72 overflow-y-auto divide-y divide-slate-100">
+                                                {notifications.length > 0 ? (
+                                                    notifications.map((item: any) => (
+                                                        <div key={item.id} onClick={() => handleMarkAsRead(item.id)} className={`p-3 text-left transition cursor-pointer hover:bg-slate-50 ${!item.read_at ? 'bg-blue-50/40' : ''}`}>
+                                                            <p className="text-xs font-bold text-slate-800">{item.data.title}</p>
+                                                            <p className="text-xs text-slate-500 mt-0.5 line-clamp-2">{item.data.message}</p>
+                                                        </div>
+                                                    ))
+                                                ) : (
+                                                    <div className="p-6 text-center text-xs text-slate-400">Belum ada notifikasi.</div>
+                                                )}
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
 
                                 <div className="relative">
                                     <button

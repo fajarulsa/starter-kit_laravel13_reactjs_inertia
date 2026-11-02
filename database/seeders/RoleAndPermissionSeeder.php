@@ -33,6 +33,10 @@ class RoleAndPermissionSeeder extends Seeder
             'roles.create',
             'roles.edit',
             'roles.delete',
+
+            // Pengaturan Sistem
+            'settings.view',
+            'settings.edit',
         ];
 
         // 2. Masukkan semua permission ke basis data

@@ -30,6 +30,10 @@ use App\Http\Controllers\UserController;
 use App\Http\Controllers\RoleController;
 use App\Http\Controllers\PermissionController;
 use App\Http\Controllers\SystemHealthController;
+use App\Http\Controllers\SettingController;
+use App\Http\Controllers\NotificationController;
+use App\Http\Controllers\Auth\GoogleController;
+use App\Http\Controllers\Auth\RegisteredUserController;
 
 Route::get('/', function () {
     return inertia('auth/login');
@@ -58,6 +62,10 @@ Route::post('/login', function (Request $request) {
     ]);
 });
 
+//  Google OAuth Routes
+Route::get('/auth/google', [GoogleController::class, 'redirectToGoogle'])->name('auth.google');
+Route::get('/auth/google/callback', [GoogleController::class, 'handleGoogleCallback']);
+
 Route::post('/logout', function (Request $request) {
     Auth::logout();
     $request->session()->invalidate();
@@ -65,6 +73,14 @@ Route::post('/logout', function (Request $request) {
 
     return redirect('/login');
 })->name('logout');
+
+// Rute Registrasi
+Route::get('/register', [RegisteredUserController::class, 'create'])
+    ->middleware('guest')
+    ->name('register');
+
+Route::post('/register', [RegisteredUserController::class, 'store'])
+    ->middleware('guest');
 
 Route::middleware(['auth'])->group(function () {
     Route::get('/dashboard', function () {
@@ -93,4 +109,13 @@ Route::middleware(['auth'])->group(function () {
 
     // Rute System Health Dashboard
     Route::get('/health', [SystemHealthController::class, 'index'])->name('health.index');//->middleware('can:health.view');
+
+    // Rute Pengaturan Sistem
+    Route::get('/settings', [SettingController::class, 'index'])->name('settings.index')->middleware('can:settings.view');
+    Route::post('/settings', [SettingController::class, 'update'])->name('settings.update')->middleware('can:settings.edit');
+
+    // In-App Notifications
+    Route::post('/notifications/mark-all-read', [NotificationController::class, 'markAllAsRead'])->name('notifications.mark-all-read');
+    Route::post('/notifications/{id}/mark-read', [NotificationController::class, 'markAsRead'])->name('notifications.mark-read');
+    Route::post('/notifications/announcement', [NotificationController::class, 'sendAnnouncement'])->name('notifications.announcement')->middleware('can:settings.edit');
 });
