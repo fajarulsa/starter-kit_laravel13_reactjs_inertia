@@ -2,26 +2,48 @@
 
 namespace Database\Seeders;
 
-use App\Models\User;
 use Illuminate\Database\Seeder;
+use Spatie\Permission\Models\Permission;
 use Spatie\Permission\Models\Role;
-use Illuminate\Support\Facades\Hash;
+use Spatie\Permission\PermissionRegistrar;
 
 class RoleAndPermissionSeeder extends Seeder
 {
     public function run(): void
     {
-        app()[\Spatie\Permission\PermissionRegistrar::class]->forgetCachedPermissions();
+        // Bersihkan cache Spatie Permission
+        app()[PermissionRegistrar::class]->forgetCachedPermissions();
 
-        Role::create(['name' => 'Super Admin']);
-        Role::create(['name' => 'User']);
+        // 1. Daftar Hak Akses Dasar Sistem (Format: modul.tindakan)
+        $permissions = [
+            // Dashboard
+            'dashboard.view',
 
-        $admin = User::create([
-            'name' => 'Super Administrator',
-            'email' => 'admin@kodepagihari.com',
-            'password' => Hash::make('password123'),
-        ]);
+            // Manajemen Pengguna
+            'users.view',
+            'users.create',
+            'users.edit',
+            'users.delete',
 
-        $admin->assignRole('Super Admin');
+            // System Health & Monitoring
+            'health.view',
+
+            // Manajemen Peran & Hak Akses
+            'roles.view',
+            'roles.create',
+            'roles.edit',
+            'roles.delete',
+        ];
+
+        // 2. Masukkan semua permission ke basis data
+        foreach ($permissions as $permission) {
+            Permission::findOrCreate($permission, 'web');
+        }
+
+        // 3. Buat SATU-SATUNYA Peran Bawaan: Super Admin
+        $superAdmin = Role::findOrCreate('Super Admin', 'web');
+
+        // 4. Berikan SEMUA Hak Akses ke Super Admin
+        $superAdmin->syncPermissions(Permission::all());
     }
 }

@@ -58,25 +58,6 @@ function BriefcaseIcon() {
     );
 }
 
-function FileTextIcon() {
-    return (
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className="h-4 w-4">
-            <path d="M7 3h7l5 5v13a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2Z" />
-            <path d="M14 3v5h5" />
-            <path d="M8 13h8M8 17h8" />
-        </svg>
-    );
-}
-
-function SettingsIcon() {
-    return (
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className="h-4 w-4">
-            <circle cx="12" cy="12" r="3.2" />
-            <path d="M19.4 15a1.7 1.7 0 0 0 .34 1.86l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06A1.7 1.7 0 0 0 15 19.4a1.7 1.7 0 0 0-1 .96 1.7 1.7 0 0 0-.2 1.08v.17a2 2 0 0 1-4 0v-.17a1.7 1.7 0 0 0-.2-1.08 1.7 1.7 0 0 0-1-.96 1.7 1.7 0 0 0-1.86.34l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06A1.7 1.7 0 0 0 4.6 15a1.7 1.7 0 0 0-.96-1 1.7 1.7 0 0 0-1.08-.2H2.39a2 2 0 0 1 0-4h.17a1.7 1.7 0 0 0 1.08-.2 1.7 1.7 0 0 0 .96-1A1.7 1.7 0 0 0 4.6 7.1l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06A1.7 1.7 0 0 0 9 4.6a1.7 1.7 0 0 0 1-.96 1.7 1.7 0 0 0 .2-1.08V2.39a2 2 0 0 1 4 0v.17a1.7 1.7 0 0 0 .2 1.08 1.7 1.7 0 0 0 1 .96 1.7 1.7 0 0 0 1.86-.34l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06A1.7 1.7 0 0 0 19.4 9c.26.35.67.58 1.15.64a1.7 1.7 0 0 0 1.28-.28 2 2 0 0 1 0 3.56 1.7 1.7 0 0 0-1.28-.28 1.7 1.7 0 0 0-1.15.64Z" />
-        </svg>
-    );
-}
-
 function SearchIcon() {
     return (
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className="h-4 w-4 text-slate-400">
@@ -95,10 +76,16 @@ function BellIcon() {
     );
 }
 
+function ActivityIcon() {
+    return (
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className="h-4 w-4">
+            <path d="M22 12h-4l-3 9L9 3l-3 9H2" />
+        </svg>
+    );
+}
+
 export default function AuthenticatedLayout({ header, children }: AuthenticatedLayoutProps) {
     const { auth, flash } = usePage<PageProps>().props;
-    
-    // State untuk mengontrol buka-tutup pop-up profil
     const [isProfileOpen, setIsProfileOpen] = useState(false);
 
     useEffect(() => {
@@ -110,10 +97,54 @@ export default function AuthenticatedLayout({ header, children }: AuthenticatedL
         }
     }, [flash]);
 
+    // Helper Function untuk mengecek Permission & Bypass Super Admin
+    const can = (permissionName?: string) => {
+        if (!permissionName) return true;
+        // Jika peran pengguna adalah Super Admin, selalu berikan akses
+        if (auth.user?.roles?.includes('Super Admin')) return true;
+        // Cek apakah permission ada di dalam daftar permission pengguna
+        return auth.user?.permissions?.includes(permissionName) ?? false;
+    };
+
+    // Daftar Menu Navigasi dengan kunci permission terkait
     const navItems = [
-        { label: 'Dashboard', href: route('dashboard'), active: route().current('dashboard'), icon: <HomeIcon /> },
-        { label: 'Pengguna', href: route('users.index'), active: route().current('users.*'), icon: <UsersIcon /> },
+        {
+            label: 'Dashboard',
+            href: route('dashboard'),
+            active: route().current('dashboard'),
+            icon: <HomeIcon />,
+            permission: 'dashboard.view',
+        },
+        {
+            label: 'Pengguna',
+            href: route('users.index'),
+            active: route().current('users.*'),
+            icon: <UsersIcon />,
+            permission: 'users.view',
+        },
+        {
+            label: 'Peran & Izin',
+            href: route('roles.index'),
+            active: route().current('roles.*'),
+            icon: <BriefcaseIcon />,
+            permission: 'roles.view',
+        },
+        {
+        label: 'System Health',
+        href: route('health.index'),
+        active: route().current('health.*'),
+        icon: <ActivityIcon />,
+        permission: 'health.view',
+        },
     ];
+
+    // Filter menu navigasi yang hanya boleh dilihat oleh pengguna
+    const visibleNavItems = navItems.filter((item) => can(item.permission));
+
+    // Menentukan nama Role yang akan ditampilkan di profil topbar
+    const displayRole = auth.user?.roles && auth.user.roles.length > 0 
+        ? auth.user.roles[0] 
+        : 'User';
 
     return (
         <div className="min-h-screen bg-[#f3f5f7] text-slate-800">
@@ -129,7 +160,7 @@ export default function AuthenticatedLayout({ header, children }: AuthenticatedL
                     </div>
 
                     <nav className="mt-2 flex-1 space-y-1 px-3">
-                        {navItems.map((item) => (
+                        {visibleNavItems.map((item) => (
                             <Link
                                 key={item.label}
                                 href={item.href}
@@ -194,7 +225,6 @@ export default function AuthenticatedLayout({ header, children }: AuthenticatedL
                                     <BellIcon />
                                 </button>
 
-                                {/* Area Profil dengan Dropdown */}
                                 <div className="relative">
                                     <button
                                         onClick={() => setIsProfileOpen(!isProfileOpen)}
@@ -205,11 +235,10 @@ export default function AuthenticatedLayout({ header, children }: AuthenticatedL
                                         </div>
                                         <div className="pr-1 text-right">
                                             <p className="text-sm font-semibold text-slate-800">{auth.user.name}</p>
-                                            <p className="text-[11px] text-slate-500">Admin</p>
+                                            <p className="text-[11px] text-slate-500">{displayRole}</p>
                                         </div>
                                     </button>
 
-                                    {/* Menu Pop-up / Dropdown */}
                                     {isProfileOpen && (
                                         <div className="absolute right-0 top-full mt-2 w-48 origin-top-right rounded-xl border border-slate-200 bg-white py-2 shadow-lg focus:outline-none z-50">
                                             <Link

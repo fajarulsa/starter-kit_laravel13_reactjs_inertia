@@ -16,11 +16,13 @@ use Illuminate\Auth\Events\PasswordReset;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
+use Illuminate\Support\Facades\Gate;
 
 class UserController extends Controller
 {
     public function index(Request $request)
     {
+        Gate::authorize('users.view');
         // Mengambil data user beserta role-nya, dipaginasi 10 per halaman
         $users = User::with('roles')->latest()->paginate(10);
 
@@ -31,6 +33,7 @@ class UserController extends Controller
 
     public function create()
     {
+        Gate::authorize('users.create');
         // Mengirimkan daftar role ke frontend agar bisa dipilih saat membuat user
         $roles = Role::select('name')->get();
         
@@ -41,6 +44,8 @@ class UserController extends Controller
 
     public function store(Request $request)
     {
+        Gate::authorize('users.create');
+
         $request->validate([
             'name' => 'required|string|max:255',
             'email' => 'required|string|email|max:255|unique:users',
@@ -62,6 +67,8 @@ class UserController extends Controller
 
     public function edit(User $user)
     {
+        Gate::authorize('users.edit');
+
         $roles = Role::select('name')->get();
         $user->load('roles'); // Memuat role aktif dari user tersebut
 
@@ -73,6 +80,8 @@ class UserController extends Controller
 
     public function update(Request $request, User $user)
     {
+        Gate::authorize('users.edit');
+
         $request->validate([
             'name' => 'required|string|max:255',
             'email' => 'required|string|email|max:255|unique:users,email,' . $user->id,
@@ -100,6 +109,8 @@ class UserController extends Controller
 
     public function destroy(User $user)
     {
+        Gate::authorize('users.delete');
+
         // Mencegah user menghapus akunnya sendiri
         if (auth()->id() === $user->id) {
             return back()->with('error', 'Anda tidak dapat menghapus akun Anda sendiri.');

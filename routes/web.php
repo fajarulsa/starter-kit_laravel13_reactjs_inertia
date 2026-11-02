@@ -27,6 +27,9 @@ use Illuminate\Support\Facades\Auth;
 use Inertia\Inertia;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\UserController;
+use App\Http\Controllers\RoleController;
+use App\Http\Controllers\PermissionController;
+use App\Http\Controllers\SystemHealthController;
 
 Route::get('/', function () {
     return inertia('auth/login');
@@ -66,7 +69,14 @@ Route::post('/logout', function (Request $request) {
 Route::middleware(['auth'])->group(function () {
     Route::get('/dashboard', function () {
         return Inertia::render('dashboard');
-    })->name('dashboard');
+    })->name('dashboard')->middleware('can:dashboard.view');
+
+    // Rute Role & Permission
+    Route::resource('roles', RoleController::class)->except(['create', 'show', 'edit'])->middleware('can:roles.view');
+
+    // Rute CRUD Permission Khusus
+    Route::post('/permissions', [PermissionController::class, 'store'])->name('permissions.store')->middleware('can:roles.create');
+    Route::delete('/permissions/{permission}', [PermissionController::class, 'destroy'])->name('permissions.destroy')->middleware('can:roles.delete');
 
     // Rute Manajemen Profil & Keamanan
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
@@ -80,4 +90,7 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/users/{user}/edit', [UserController::class, 'edit'])->name('users.edit');
     Route::put('/users/{user}', [UserController::class, 'update'])->name('users.update');
     Route::delete('/users/{user}', [UserController::class, 'destroy'])->name('users.destroy');
+
+    // Rute System Health Dashboard
+    Route::get('/health', [SystemHealthController::class, 'index'])->name('health.index');//->middleware('can:health.view');
 });
